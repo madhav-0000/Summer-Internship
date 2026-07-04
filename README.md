@@ -1,59 +1,124 @@
-# Technology Stack & Detailed Implementation Guide
+# 🚗 Real-Time Driver Drowsiness Detection System
 
-## Overview
-This document outlines the specific technologies, programming languages, libraries, and mathematical concepts used to implement the Real-Time Driver Drowsiness Detection System. The project prioritizes a mathematical/geometric approach over heavy Deep Learning models to ensure high performance (high FPS) on standard local hardware.
+[![Python Version](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/)
+[![OpenCV](https://img.shields.io/badge/OpenCV-4.x-green.svg)](https://opencv.org/)
+[![MediaPipe](https://img.shields.io/badge/MediaPipe-0.10.14-red.svg)](https://google.github.io/mediapipe/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## Core Technology Stack
+A lightweight, high-performance, real-time computer vision system designed to detect driver drowsiness and distractions. Using **MediaPipe Face Mesh** and direct geometric mathematical ratios, this system achieves superior CPU-only framerates (FPS) without requiring expensive GPU hardware or heavy Deep Learning inference.
 
-- **Programming Language:** Python 3.8+ (Chosen for its rich ecosystem of computer vision and mathematical libraries).
-- **Environment:** Local Windows machine execution (can be adapted for Mac/Linux).
-- **Hardware Requirement:** Standard USB or integrated Webcam.
+```mermaid
+graph TD
+    A[Webcam Video Stream] -->|Read Frame| B(Process Frame with MediaPipe)
+    B -->|468 Facial Landmarks| C{Landmarks Detected?}
+    C -->|Yes| D[Compute Ratios]
+    C -->|No| E[Increment Distraction Frame Counter]
+    D --> D1[Eye Aspect Ratio - EAR]
+    D --> D2[Mouth Aspect Ratio - MAR]
+    D --> D3[Head Pitch Ratio - Pose]
+    D1 & D2 & D3 --> F{Threshold Breached & Held?}
+    E --> F
+    F -->|Yes| G[Trigger Alarm Sound & UI Alert]
+    F -->|No| H[Set Status to AWAKE & Stop Alarm]
+```
 
-## Dependencies & Libraries
+---
 
-1. **OpenCV (`opencv-python`)**
-   - **Purpose:** Video streaming and image processing.
-   - **Usage:** Capturing frames from the webcam, converting color spaces (BGR to RGB), rendering text and bounding boxes on the video feed, and displaying the final output window.
-2. **MediaPipe (`mediapipe`)**
-   - **Purpose:** Facial landmark detection.
-   - **Usage:** Utilizing the `Face Mesh` solution to extract 468 3D facial landmarks from each frame in real-time. This provides the raw coordinate data needed for all subsequent mathematical calculations.
-3. **NumPy (`numpy`)**
-   - **Purpose:** High-performance mathematical operations.
-   - **Usage:** Calculating Euclidean distances between facial landmarks, computing aspect ratios (EAR, MAR), and managing arrays of coordinate data efficiently.
-4. **Pygame (`pygame`) or Playsound**
-   - **Purpose:** Audio alert generation.
-   - **Usage:** Playing a "beep" or alarm sound when a drowsiness threshold is breached. Pygame's mixer is often preferred as it allows for asynchronous audio playback without blocking the main OpenCV video processing thread.
+## ✨ Key Features
 
-## Feature Implementation Details
+1. **👀 Eye Closure Detection (Micro-sleep):**
+   Computes the Eye Aspect Ratio (EAR) dynamically. If the driver closes their eyes for a consecutive number of frames, the system flags the state as `DROWSY (EYES CLOSED)` and sounds the alarm.
+2. **🥱 Yawn Detection:**
+   Calcules the Mouth Aspect Ratio (MAR). If the driver yawns (mouth opened wide) for longer than the safety threshold, the system flags it as `DROWSY (YAWNING)`.
+3. **💤 Head Drooping (Nodding Off):**
+   Estimates head pitch ratio based on Y-axis projection of central vertical landmarks. When the driver's head falls forward, the system identifies the nod-off event.
+4. **⚠️ Distraction & Camera Blocked Detection:**
+   Monitors face presence. If the driver turns their head completely away or the camera is blocked, a distraction alarm is triggered after a brief safety window.
+5. **🔊 Audio Alert System:**
+   Utilizes `pygame`'s audio mixer to trigger asynchronous, non-blocking alarm sounds, ensuring video frames continue processing smoothly.
 
-### 1. Video Streaming & Face Mesh Integration
-- **Implementation:** 
-  - `cv2.VideoCapture(0)` initializes the webcam.
-  - Each frame is read in a `while` loop, converted from BGR (OpenCV default) to RGB, and passed to `mediapipe.solutions.face_mesh`.
-  - The model outputs an array of normalized coordinates (x, y, z) for 468 points on the face.
+---
 
-### 2. Eye Closure Detection (EAR - Eye Aspect Ratio)
-- **Implementation:**
-  - **Landmarks Used:** Specific points around the left and right eyes (e.g., points 33, 133, 159, 145, etc.).
-  - **Math:** The EAR formula calculates the ratio of the distances between the vertical eye landmarks and the horizontal eye landmarks. 
-  - **Logic:** When the eyes close, the EAR value drops significantly. If `EAR < EAR_THRESHOLD` for `EAR_FRAMES` consecutive frames, an alert is triggered.
+## 🏗️ Project Structure
 
-### 3. Yawn Detection (MAR - Mouth Aspect Ratio)
-- **Implementation:**
-  - **Landmarks Used:** Specific points on the inner or outer lips (e.g., points 13, 14, 78, 308).
-  - **Math:** Similar to EAR, the MAR formula calculates the ratio of the vertical distance between the top and bottom lips to the horizontal distance between the corners of the mouth.
-  - **Logic:** During a yawn, the MAR value spikes. If `MAR > MAR_THRESHOLD` for `MAR_FRAMES` consecutive frames, a yawn is recorded.
+- **[main.py](file:///a:/projects/Summer-Internship/main.py):** Main application entry point, containing the webcam capture loop, threshold processing, and UI visualization.
+- **[core/](file:///a:/projects/Summer-Internship/core):** Source code directory housing tracker modules.
+  - [video.py](file:///a:/projects/Summer-Internship/core/video.py) - Webcam and frame grabbing interface.
+  - [mesh.py](file:///a:/projects/Summer-Internship/core/mesh.py) - MediaPipe Face Mesh initialization and processing.
+  - [eyes.py](file:///a:/projects/Summer-Internship/core/eyes.py) - Eye Aspect Ratio (EAR) tracking.
+  - [mouth.py](file:///a:/projects/Summer-Internship/core/mouth.py) - Mouth Aspect Ratio (MAR) yawning tracker.
+  - [pose.py](file:///a:/projects/Summer-Internship/core/pose.py) - Head pitch and drooping estimation.
+  - [alerts.py](file:///a:/projects/Summer-Internship/core/alerts.py) - Non-blocking sound generator.
+- **[docs/](file:///a:/projects/Summer-Internship/docs):** Detailed system guides and concepts.
+  - [01_setup_and_testing_guide.md](file:///a:/projects/Summer-Internship/docs/01_setup_and_testing_guide.md) - Complete setup instructions.
+  - [02_system_architecture.md](file:///a:/projects/Summer-Internship/docs/02_system_architecture.md) - Detailed component walkthrough.
+  - [03_math_and_concepts.md](file:///a:/projects/Summer-Internship/docs/03_math_and_concepts.md) - Theoretical formulas for EAR, MAR, and Pitch.
+  - [04_tech_stack_and_implementation.md](file:///a:/projects/Summer-Internship/docs/04_tech_stack_and_implementation.md) - In-depth look at underlying technologies.
 
-### 4. Head Drooping Detection (Pose Estimation)
-- **Implementation:**
-  - **Landmarks Used:** The tip of the nose, the chin, and points on the sides of the face.
-  - **Math:** By comparing the 2D or 3D positions of the nose relative to the chin and eyes, we can estimate the pitch (up/down tilt) of the head. Simple geometric distances or a Perspective-n-Point (PnP) algorithm can be used.
-  - **Logic:** If the calculated head pitch angle drops below a certain `PITCH_THRESHOLD` (indicating the head is falling forward), an alert is triggered.
+---
 
-### 5. Alert System
-- **Implementation:**
-  - **Logic:** A central state machine monitors the EAR, MAR, and Pitch values. 
-  - **Action:** If any of these values cross their danger thresholds for their respective duration thresholds (to filter out blinks or quick glances), a separate thread or asynchronous call invokes the audio playback using `pygame.mixer.Sound.play()`.
+## ⚡ Quick Start
 
-## Configuration & Tuning
-All thresholds (`EAR_THRESHOLD`, `MAR_THRESHOLD`, `PITCH_THRESHOLD`) will be exposed as configurable constants at the top of the main script or in a dedicated `config.py` file. This allows for easy calibration based on different camera angles, lighting conditions, and individual user facial structures.
+### Prerequisites
+- Python 3.8 or higher.
+- A functional webcam.
+
+### 1. Set Up Environment
+Create and activate a virtual environment to keep dependencies isolated:
+
+```bash
+# Windows
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+
+# macOS/Linux
+python3 -m venv venv
+source venv/bin/activate
+```
+
+### 2. Install Dependencies
+Install all required libraries listed in [requirements.txt](file:///a:/projects/Summer-Internship/requirements.txt):
+
+```bash
+pip install -r requirements.txt
+```
+
+### 3. Run the Application
+Run the main script to start real-time detection:
+
+```bash
+python main.py
+```
+*Press `q` inside the video feed window to stop and clean up resources.*
+
+---
+
+## ⚙️ Configuration & Tuning
+
+You can calibrate the sensitivity and duration thresholds of the system directly inside [main.py](file:///a:/projects/Summer-Internship/main.py#L10-L24):
+
+| Parameter | Default Value | Description |
+| :--- | :---: | :--- |
+| `EAR_THRESHOLD` | `0.25` | EAR value below which eyes are considered closed. |
+| `EAR_FRAMES` | `15` | Minimum consecutive frames of closed eyes to trigger the alarm. |
+| `MAR_THRESHOLD` | `0.6` | MAR value above which mouth is considered yawning. |
+| `MAR_FRAMES` | `15` | Minimum consecutive frames of yawning to trigger the alarm. |
+| `PITCH_THRESHOLD`| `0.55` | Head pitch ratio below which the head is considered drooping. |
+| `PITCH_FRAMES` | `15` | Minimum consecutive frames of head droop to trigger the alarm. |
+| `DISTRACTION_FRAMES` | `30` | Consecutive frames without face detection before triggering a distraction alert. |
+
+---
+
+## 📖 Deep Dives & Documentation
+
+For a more thorough understanding, explore the following documentation artifacts:
+
+*   **Step-by-step Setup:** See [01_setup_and_testing_guide.md](file:///a:/projects/Summer-Internship/docs/01_setup_and_testing_guide.md) for how to run and troubleshoot.
+*   **System Layout:** Read [02_system_architecture.md](file:///a:/projects/Summer-Internship/docs/02_system_architecture.md) to understand modular data flows.
+*   **Mathematical Formulations:** Review [03_math_and_concepts.md](file:///a:/projects/Summer-Internship/docs/03_math_and_concepts.md) for formulas and MediaPipe landmark index mapping.
+*   **Implementation Guide:** Check [04_tech_stack_and_implementation.md](file:///a:/projects/Summer-Internship/docs/04_tech_stack_and_implementation.md) for libraries details and rationale.
+
+---
+
+## 📜 License
+This project is licensed under the MIT License. See the LICENSE file for details.
