@@ -71,10 +71,36 @@ This feature tracks the angle of your head to see if you are nodding off.
 - **Troubleshooting:** If looking down at your keyboard triggers this alarm by mistake, open `main.py` and decrease the `PITCH_THRESHOLD` number so it requires a more extreme head drop.
 
 ### Test D: Distraction / Face Lost Detection
-This feature detects if you look completely away from the road or if your camera is blocked (e.g., by a hand over your glasses).
-- **Action:** While looking at the camera, suddenly turn your head 90 degrees to the left or right (so only the side of your face is visible) OR place your hand completely over your face/camera. Hold this for 1.5 seconds.
-- **Expected Result:** The system will lose your face tracking. The text should change to **"DISTRACTED / CAMERA BLOCKED"** and the alarm will sound.
-- **Troubleshooting:** If the alarm goes off too quickly when you briefly glance away, increase the `DISTRACTION_FRAMES` number in `main.py`.
+This feature detects if you look away from the road (e.g. at a phone or passenger) or if your camera is blocked (e.g., by a hand over your face).
+- **Action:** Look straight at the camera, then turn your head moderately (about 25 to 30 degrees) to the left or right, simulating looking away from the road. Hold this position for 1.5 seconds. Alternatively, cover your face completely with your hand.
+- **Expected Result:** The "Yaw" value shown on the screen will rise above `0.35` (or face landmarks will be lost). The status text will change to **"Status: DISTRACTED / CAMERA BLOCKED"** and the alarm will sound. Returning your gaze to the road will immediately clear the alert.
+- **Troubleshooting:** If the alarm triggers too easily when you scan your mirrors, you can open `main.py` and increase `YAW_THRESHOLD` slightly (e.g. to `0.40`) or increase the `DISTRACTION_FRAMES` count.
+
+### Test E: Vehicle Motion & Standby Detection
+This feature optimizes safety checks by only running the camera face mesh processing when the vehicle is actively driving, and entering standby when stopped.
+
+**Method 1: Using the JSON File Simulation (Mock Mode)**
+- **Action:**
+  1. Open `motion_device.json` in a text editor.
+  2. Change `"in_motion"` to `false` and `"speed"` to `0.0`. Save the file.
+  3. Start the application. You will see the video feed replaced by a dark screen with the text **"SYSTEM STANDBY"** and a bottom status indicating **"Status: STANDBY (CAR NOT IN MOTION)"** (colored orange). Face landmark detection is now suspended to save CPU resources.
+  4. While the application is running, change `"in_motion"` to `true` (or `"speed"` to `20.0`) in `motion_device.json` and save the file.
+- **Expected Result:** Within a fraction of a second, the system will wake up, resume video landmarks tracking, and change its state back to **"Status: AWAKE"** (colored green).
+
+**Method 2: Using the Keyboard Toggle Override**
+- **Action:**
+  1. While the camera window is open and active, press the **`m`** key on your keyboard.
+- **Expected Result:**
+  - First press: Activates **`Motion: OVERRIDE (MOTION)`** (forces tracking on).
+  - Second press: Activates **`Motion: OVERRIDE (STOPPED)`** (forces system standby, suspending face mesh).
+  - Third press: Returns to **`Motion: SENSOR`** (auto-detects via the mock file or physical port).
+
+**Method 3: Real Hardware Interface (No Code Modification Needed)**
+- **Action:**
+  1. Connect your physical serial sensor device (e.g. USB GPS module or OBD-II reader) to the system.
+  2. Open `main.py` and set `MOTION_SERIAL_PORT` to your device's connection port (e.g. `'COM3'` on Windows or `'/dev/ttyUSB0'` on Linux).
+  3. Start the application. The system will automatically detect the serial device, read incoming speed data (supporting standard NMEA sentences like GPRMC/GPVTG or raw `SPEED=X` lines), and transition between standby and tracking modes automatically as the vehicle moves.
+  4. If no device is attached or the mock configuration file is deleted, the system safely defaults to **"Always On"** mode to ensure safety is never compromised.
 
 > [!TIP]
 > **Check the Performance:** Look at the "FPS" number in the top corner of the video window. A smooth, real-time experience usually means an FPS of 20 or higher.

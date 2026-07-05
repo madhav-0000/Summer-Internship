@@ -23,6 +23,9 @@ This document outlines the specific technologies, programming languages, librari
 4. **Pygame (`pygame`) or Playsound**
    - **Purpose:** Audio alert generation.
    - **Usage:** Playing a "beep" or alarm sound when a drowsiness threshold is breached. Pygame's mixer is often preferred as it allows for asynchronous audio playback without blocking the main OpenCV video processing thread.
+5. **PySerial (`pyserial`) [Optional]**
+   - **Purpose:** Communication with physical serial port hardware.
+   - **Usage:** Reading speed data or GPS strings (NMEA format) from a connected microcontroller, OBD-II reader, or GPS sensor.
 
 ## Feature Implementation Details
 
@@ -55,5 +58,11 @@ This document outlines the specific technologies, programming languages, librari
   - **Logic:** A central state machine monitors the EAR, MAR, and Pitch values. 
   - **Action:** If any of these values cross their danger thresholds for their respective duration thresholds (to filter out blinks or quick glances), a separate thread or asynchronous call invokes the audio playback using `pygame.mixer.Sound.play()`.
 
+### 6. Vehicle Motion & Standby System
+- **Implementation:**
+  - **Logic:** Periodically reads vehicle status to determine if the vehicle is in motion. If the vehicle is stationary, face detection is suspended (saving power and CPU) and the screen dims to a standby overlay.
+  - **Math/Parsing:** Converts NMEA GPVTG and GPRMC coordinates and speeds (knots/kmh) from USB-serial GPS modules, or processes raw key-value pairs (`SPEED=X`).
+  - **Fallback:** Defaults to safety "Always On" mode if no motion detection device is configured or connected.
+
 ## Configuration & Tuning
-All thresholds (`EAR_THRESHOLD`, `MAR_THRESHOLD`, `PITCH_THRESHOLD`) will be exposed as configurable constants at the top of the main script or in a dedicated `config.py` file. This allows for easy calibration based on different camera angles, lighting conditions, and individual user facial structures.
+All thresholds (`EAR_THRESHOLD`, `MAR_THRESHOLD`, `PITCH_THRESHOLD`) and motion detection settings (`MOTION_CONFIG_PATH`, `MOTION_SERIAL_PORT`) will be exposed as configurable constants at the top of the main script. This allows for easy calibration based on different camera angles, lighting conditions, individual user facial structures, and hardware COM ports.

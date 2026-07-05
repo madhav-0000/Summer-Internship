@@ -1,0 +1,6 @@
+{
+  "device_attached": true,
+  "in_motion": false,
+  "speed": 0.0,
+  "description": "Simulated vehicle motion sensor."
+}

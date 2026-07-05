@@ -9,7 +9,9 @@ A lightweight, high-performance, real-time computer vision system designed to de
 
 ```mermaid
 graph TD
-    A[Webcam Video Stream] -->|Read Frame| B(Process Frame with MediaPipe)
+    A[Webcam Video Stream] -->|Read Frame| AM{Vehicle in Motion?}
+    AM -->|No| Standby[Suspend Face Mesh & Enter Standby]
+    AM -->|Yes| B(Process Frame with MediaPipe)
     B -->|468 Facial Landmarks| C{Landmarks Detected?}
     C -->|Yes| D[Compute Ratios]
     C -->|No| E[Increment Distraction Frame Counter]
@@ -36,6 +38,8 @@ graph TD
    Monitors face presence. If the driver turns their head completely away or the camera is blocked, a distraction alarm is triggered after a brief safety window.
 5. **🔊 Audio Alert System:**
    Utilizes `pygame`'s audio mixer to trigger asynchronous, non-blocking alarm sounds, ensuring video frames continue processing smoothly.
+6. **🚦 Vehicle Motion Standby Mode:**
+   Pauses facial analysis and sounds when the vehicle is stationary (simulated via JSON or read via serial sensor), entering a low-resource standby screen to save CPU and battery power. Falls back to safety-first "Always On" if no sensor is attached.
 
 ---
 
@@ -44,6 +48,7 @@ graph TD
 - **[main.py](file:///a:/projects/Summer-Internship/main.py):** Main application entry point, containing the webcam capture loop, threshold processing, and UI visualization.
 - **[core/](file:///a:/projects/Summer-Internship/core):** Source code directory housing tracker modules.
   - [video.py](file:///a:/projects/Summer-Internship/core/video.py) - Webcam and frame grabbing interface.
+  - [motion.py](file:///a:/projects/Summer-Internship/core/motion.py) - GPS serial / file mock vehicle motion detector.
   - [mesh.py](file:///a:/projects/Summer-Internship/core/mesh.py) - MediaPipe Face Mesh initialization and processing.
   - [eyes.py](file:///a:/projects/Summer-Internship/core/eyes.py) - Eye Aspect Ratio (EAR) tracking.
   - [mouth.py](file:///a:/projects/Summer-Internship/core/mouth.py) - Mouth Aspect Ratio (MAR) yawning tracker.
@@ -54,6 +59,7 @@ graph TD
   - [02_system_architecture.md](file:///a:/projects/Summer-Internship/docs/02_system_architecture.md) - Detailed component walkthrough.
   - [03_math_and_concepts.md](file:///a:/projects/Summer-Internship/docs/03_math_and_concepts.md) - Theoretical formulas for EAR, MAR, and Pitch.
   - [04_tech_stack_and_implementation.md](file:///a:/projects/Summer-Internship/docs/04_tech_stack_and_implementation.md) - In-depth look at underlying technologies.
+  - **[components/](file:///a:/projects/Summer-Internship/docs/components):** Component-specific documentation folders including [motion_detector.md](file:///a:/projects/Summer-Internship/docs/components/motion_detector.md).
 
 ---
 
@@ -106,6 +112,8 @@ You can calibrate the sensitivity and duration thresholds of the system directly
 | `PITCH_THRESHOLD`| `0.55` | Head pitch ratio below which the head is considered drooping. |
 | `PITCH_FRAMES` | `15` | Minimum consecutive frames of head droop to trigger the alarm. |
 | `DISTRACTION_FRAMES` | `30` | Consecutive frames without face detection before triggering a distraction alert. |
+| `MOTION_CONFIG_PATH`| `"motion_device.json"`| File path for simulated speed/motion testing. |
+| `MOTION_SERIAL_PORT`| `None` | Port name (e.g. `'COM3'`) to read live GPS speed telemetry. |
 
 ---
 
@@ -115,6 +123,7 @@ For a more thorough understanding, explore the following documentation artifacts
 
 *   **Step-by-step Setup:** See [01_setup_and_testing_guide.md](file:///a:/projects/Summer-Internship/docs/01_setup_and_testing_guide.md) for how to run and troubleshoot.
 *   **System Layout:** Read [02_system_architecture.md](file:///a:/projects/Summer-Internship/docs/02_system_architecture.md) to understand modular data flows.
+*   **Motion Detector details:** Check [motion_detector.md](file:///a:/projects/Summer-Internship/docs/components/motion_detector.md) for speed sensor setup.
 *   **Mathematical Formulations:** Review [03_math_and_concepts.md](file:///a:/projects/Summer-Internship/docs/03_math_and_concepts.md) for formulas and MediaPipe landmark index mapping.
 *   **Implementation Guide:** Check [04_tech_stack_and_implementation.md](file:///a:/projects/Summer-Internship/docs/04_tech_stack_and_implementation.md) for libraries details and rationale.
 

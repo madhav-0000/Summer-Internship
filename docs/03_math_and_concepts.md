@@ -61,14 +61,36 @@ We use the following central vertical landmarks:
 - **Chin:** `152`
 
 ## 4. Distraction & Occlusion Detection
-While mathematical ratios like EAR and MAR handle the active geometry of the face, they rely on the face being visible. 
+While mathematical ratios like EAR and MAR handle the active geometry of the face, they require the face to be facing relatively forward and visible.
 
-**The Challenge:**
-If the driver turns their head 90 degrees away from the camera (extreme profile view) or if a hand covers the face (e.g., adjusting glasses), the MediaPipe Face Mesh model drops the detection entirely because it can no longer map the necessary 468 points.
+To capture a wider range of distraction scenarios, the system combines **occlusion detection** (face lost entirely) with a geometric **Head Yaw Index** calculation (detecting when the driver is looking to the side).
 
-**The Solution:**
-Instead of silently failing, we use the *absence* of data as an indicator.
-- We maintain a rolling counter `no_face_frames`.
-- Each frame that MediaPipe returns empty (`results.multi_face_landmarks` is None), we increment the counter.
-- If a face is found, the counter is reset to zero.
-- If the counter exceeds the `DISTRACTION_FRAMES` threshold (typically ~30 frames or 1.5 seconds), the system deduces that the camera is either blocked or the driver is looking completely away from the road, triggering a `DISTRACTED / CAMERA BLOCKED` alarm.
+### A. Head Yaw Index (Looking Sideways)
+We approximate the driver's head yaw (left-right rotation angle) by measuring the symmetry of the nose relative to the outer edges of the face in a 2D projection.
+
+**Formula:**
+$$\text{Yaw Index} = \frac{|d_{\text{left}} - d_{\text{right}}|}{d_{\text{left}} + d_{\text{right}}}$$
+
+Where:
+- $d_{\text{left}} = |\text{nose}_x - \text{left\_edge}_x|$ (Horizontal distance from nose to the left cheek border)
+- $d_{\text{right}} = |\text{right\_edge}_x - \text{nose}_x|$ (Horizontal distance from nose to the right cheek border)
+
+**How it works:**
+- **Symmetric Face (Looking Forward):** The nose tip sits horizontally centered. $d_{\text{left}} \approx d_{\text{right}}$, causing the numerator $|d_{\text{left}} - d_{\text{right}}|$ to be near $0$, yielding a **Yaw Index near 0.0**.
+- **Asymmetric Face (Looking Away):** As the head rotates to the left or right, the nose tip moves horizontally closer to one cheek edge. One distance decreases while the other increases, causing the **Yaw Index to approach 1.0**.
+- If the calculated `Yaw Index > YAW_THRESHOLD` (typically set around `0.35`), the driver is considered distracted.
+
+### B. Occlusion & Loss of Face Mesh
+If the driver turns their head extremely far (e.g. 90 degrees) or blocks the camera with their hand, the MediaPipe Face Mesh model drops the tracking entirely and returns no landmarks.
+
+### C. Combined Distraction Logic
+To prevent false alarms from quick glances or normal mirror checks, the system uses a rolling frame buffer counter:
+- If **either** the face landmarks are lost OR the **Yaw Index exceeds the threshold**, we increment a `no_face_frames` counter.
+- If the driver looks back at the road, the counter immediately resets to zero.
+- If the counter exceeds the safety limit `DISTRACTION_FRAMES` (typically `30` frames or ~1.5 seconds), the distraction alert is triggered.
+- While the driver is looking away (yaw is high), EAR, MAR, and pitch alarms are suspended to prevent false close-eye alerts caused by skewed camera angles.
+
+### MediaPipe Landmark Indices
+- **Nose Tip:** `1`
+- **Left Edge of Face:** `234`
+- **Right Edge of Face:** `454`
