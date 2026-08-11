@@ -14,7 +14,7 @@ If your project is saved in a folder called `research internship` on your `C:` d
 cd "C:\research internship"
 ```
 
-## Step 3: Activate the Virtual Environment
+## Step 3: Activate the Virtual Environment (If Applicable)
 The virtual environment holds all the necessary code libraries for the program to run. You must activate it before starting the program.
 
 Run the command for your operating system:
