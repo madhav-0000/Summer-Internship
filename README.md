@@ -5,21 +5,27 @@
 [![MediaPipe](https://img.shields.io/badge/MediaPipe-0.10.14-red.svg)](https://google.github.io/mediapipe/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A lightweight, high-performance, real-time computer vision system designed to detect driver drowsiness and distractions. Using **MediaPipe Face Mesh** and direct geometric mathematical ratios, this system achieves superior CPU-only framerates (FPS) without requiring expensive GPU hardware or heavy Deep Learning inference.
+A lightweight, high-performance, real-time computer vision system designed to detect driver drowsiness and distractions. Using **MediaPipe Face Mesh** and direct geometric mathematical ratios, this system achieves superior CPU-only framerates without requiring expensive GPU hardware or heavy deep learning inference.
+
+All detection thresholds are **time-based** (measured in real seconds) rather than frame counts, so the system behaves consistently at any camera FPS.
 
 ```mermaid
 graph TD
     A[Webcam Video Stream] -->|Read Frame| AM{Vehicle in Motion?}
     AM -->|No| Standby[Suspend Face Mesh & Enter Standby]
-    AM -->|Yes| B(Process Frame with MediaPipe)
+    AM -->|Yes| RM{Reverse Mode ON?}
+    RM -->|Yes| RMSkip[Suppress distraction alerts\nShow REVERSE MODE banner]
+    RM -->|No| B(Process Frame with MediaPipe)
     B -->|468 Facial Landmarks| C{Landmarks Detected?}
-    C -->|Yes| D[Compute Ratios]
-    C -->|No| E[Increment Distraction Frame Counter]
-    D --> D1[Eye Aspect Ratio - EAR]
-    D --> D2[Mouth Aspect Ratio - MAR]
-    D --> D3[Head Pitch Ratio - Pose]
-    D1 & D2 & D3 --> F{Threshold Breached & Held?}
-    E --> F
+    C -->|Yes| YAW{Yaw Index > Threshold?}
+    C -->|No| E[Increment Distraction Counter]
+    YAW -->|Brief glance < 4s| MirrorCheck[Mirror Check — no penalty]
+    YAW -->|Sustained > 4s| E
+    YAW -->|No| D[Compute Ratios]
+    D --> D1[Eye Aspect Ratio — EAR]
+    D --> D2[Mouth Aspect Ratio — MAR]
+    D --> D3[Head Pitch Ratio — Pose]
+    D1 & D2 & D3 & E --> F{Escalation Threshold Reached?}
     F -->|Yes| G[Trigger Alarm Sound & UI Alert]
     F -->|No| H[Set Status to AWAKE & Stop Alarm]
 ```
@@ -29,49 +35,64 @@ graph TD
 ## ✨ Key Features
 
 1. **👀 Eye Closure Detection (Micro-sleep):**
-   Computes the Eye Aspect Ratio (EAR) dynamically. If the driver closes their eyes for a consecutive number of frames, the system flags the state as `DROWSY (EYES CLOSED)` and sounds the alarm.
+   Computes the Eye Aspect Ratio (EAR). If the driver's eyes remain continuously closed for **2 seconds**, the system flags `DROWSY (EYES CLOSED)`. Requires **2 such events within 45 seconds** before the alarm arms.
+
 2. **🥱 Yawn Detection:**
-   Calcules the Mouth Aspect Ratio (MAR). If the driver yawns (mouth opened wide) for longer than the safety threshold, the system flags it as `DROWSY (YAWNING)`.
+   Computes the Mouth Aspect Ratio (MAR). A yawn must be held open for **≥ 1 second** to count — short mouth movements (talking, coughing) are filtered out. **3 qualifying yawns within 30 seconds** arms the alarm; the next yawn triggers it.
+
 3. **💤 Head Drooping (Nodding Off):**
-   Estimates head pitch ratio based on Y-axis projection of central vertical landmarks. When the driver's head falls forward, the system identifies the nod-off event.
+   Estimates head pitch ratio from vertical facial landmarks. The head must droop for **1.5 continuous seconds** to count as an event, **and** the EAR must also be below 0.30 (eyes partially closing) — this prevents false positives from deliberate tilts like resting your chin on your hand.
+
 4. **⚠️ Distraction & Camera Blocked Detection:**
-   Monitors face presence. If the driver turns their head completely away or the camera is blocked, a distraction alarm is triggered after a brief safety window.
-5. **🔊 Audio Alert System:**
-   Utilizes `pygame`'s audio mixer to trigger asynchronous, non-blocking alarm sounds, ensuring video frames continue processing smoothly.
-6. **🚦 Vehicle Motion Standby Mode:**
-   Pauses facial analysis and sounds when the vehicle is stationary (simulated via JSON or read via serial sensor), entering a low-resource standby screen to save CPU and battery power. Falls back to safety-first "Always On" if no sensor is attached.
+   Combines two mechanisms:
+   - **Yaw Index** (face turned sideways): brief glances ≤ 4 seconds are tolerated as mirror checks. Beyond 4 seconds triggers distraction.
+   - **Face Loss** (camera blocked / extreme head turn): if landmarks disappear for ~0.75s, a distraction event is recorded.
+   **2 distraction events within 60 seconds** arms the alert.
+
+5. **🔄 Reverse Mode:**
+   Press `r` to toggle Reverse Mode. A prominent amber banner appears at the top of the frame. In this mode, face-loss distraction alerts are suppressed (the driver is expected to be looking backward). Auto-disables after 120 seconds as a safety net.
+
+6. **🔊 Audio Alert System:**
+   Uses `pygame`'s audio mixer to trigger asynchronous, non-blocking alarms — video processing continues without interruption.
+
+7. **🚦 Vehicle Motion Standby:**
+   Pauses all facial analysis when the vehicle is stationary, entering a dark standby screen to save CPU. Supports:
+   - JSON mock file (for testing)
+   - Physical serial GPS/OBD-II sensor
+   - Always-On fallback if no sensor is attached
+
+8. **📊 Real-Time HUD:**
+   On-screen overlay showing EAR / MAR / Pitch / Yaw values, escalation event counters (e.g. `YAWN: 1/3`), motion state badge, reverse mode banner, status bar, and FPS counter.
 
 ---
 
 ## 🏗️ Project Structure
 
-- **[main.py](file:///a:/projects/Summer-Internship/main.py):** Main application entry point, containing the webcam capture loop, threshold processing, and UI visualization.
-- **[core/](file:///a:/projects/Summer-Internship/core):** Source code directory housing tracker modules.
-  - [video.py](file:///a:/projects/Summer-Internship/core/video.py) - Webcam and frame grabbing interface.
-  - [motion.py](file:///a:/projects/Summer-Internship/core/motion.py) - GPS serial / file mock vehicle motion detector.
-  - [mesh.py](file:///a:/projects/Summer-Internship/core/mesh.py) - MediaPipe Face Mesh initialization and processing.
-  - [eyes.py](file:///a:/projects/Summer-Internship/core/eyes.py) - Eye Aspect Ratio (EAR) tracking.
-  - [mouth.py](file:///a:/projects/Summer-Internship/core/mouth.py) - Mouth Aspect Ratio (MAR) yawning tracker.
-  - [pose.py](file:///a:/projects/Summer-Internship/core/pose.py) - Head pitch and drooping estimation.
-  - [alerts.py](file:///a:/projects/Summer-Internship/core/alerts.py) - Non-blocking sound generator.
+- **[main.py](file:///a:/projects/Summer-Internship/main.py):** Main application entry point — webcam loop, threshold processing, UI overlay.
+- **[core/](file:///a:/projects/Summer-Internship/core):** Detection and tracking modules.
+  - [video.py](file:///a:/projects/Summer-Internship/core/video.py) — Webcam capture with explicit resolution request.
+  - [motion.py](file:///a:/projects/Summer-Internship/core/motion.py) — GPS serial / JSON mock vehicle motion detector.
+  - [mesh.py](file:///a:/projects/Summer-Internship/core/mesh.py) — MediaPipe Face Mesh initialization.
+  - [eyes.py](file:///a:/projects/Summer-Internship/core/eyes.py) — EAR tracking with time-based closure detection.
+  - [mouth.py](file:///a:/projects/Summer-Internship/core/mouth.py) — MAR tracking with time-based yawn detection.
+  - [pose.py](file:///a:/projects/Summer-Internship/core/pose.py) — Head pitch estimation with time-based droop detection.
+  - [alerts.py](file:///a:/projects/Summer-Internship/core/alerts.py) — Non-blocking sound generator.
+  - [alert_escalation.py](file:///a:/projects/Summer-Internship/core/alert_escalation.py) — Two-tier sliding-window escalation system.
 - **[docs/](file:///a:/projects/Summer-Internship/docs):** Detailed system guides and concepts.
-  - [01_setup_and_testing_guide.md](file:///a:/projects/Summer-Internship/docs/01_setup_and_testing_guide.md) - Complete setup instructions.
-  - [02_system_architecture.md](file:///a:/projects/Summer-Internship/docs/02_system_architecture.md) - Detailed component walkthrough.
-  - [03_math_and_concepts.md](file:///a:/projects/Summer-Internship/docs/03_math_and_concepts.md) - Theoretical formulas for EAR, MAR, and Pitch.
-  - [04_tech_stack_and_implementation.md](file:///a:/projects/Summer-Internship/docs/04_tech_stack_and_implementation.md) - In-depth look at underlying technologies.
-  - **[components/](file:///a:/projects/Summer-Internship/docs/components):** Component-specific documentation folders including [motion_detector.md](file:///a:/projects/Summer-Internship/docs/components/motion_detector.md).
+  - [01_setup_and_testing_guide.md](file:///a:/projects/Summer-Internship/docs/01_setup_and_testing_guide.md) — Setup and test instructions.
+  - [02_system_architecture.md](file:///a:/projects/Summer-Internship/docs/02_system_architecture.md) — Component walkthrough.
+  - [03_math_and_concepts.md](file:///a:/projects/Summer-Internship/docs/03_math_and_concepts.md) — EAR, MAR, Pitch, and Yaw formulas.
+  - [04_tech_stack_and_implementation.md](file:///a:/projects/Summer-Internship/docs/04_tech_stack_and_implementation.md) — Libraries and design rationale.
 
 ---
 
 ## ⚡ Quick Start
 
 ### Prerequisites
-- Python 3.8 or higher.
-- A functional webcam.
+- Python 3.8 or higher
+- A functional webcam
 
 ### 1. Set Up Environment
-Create and activate a virtual environment to keep dependencies isolated:
-
 ```bash
 # Windows
 python -m venv venv
@@ -83,49 +104,73 @@ source venv/bin/activate
 ```
 
 ### 2. Install Dependencies
-Install all required libraries listed in [requirements.txt](file:///a:/projects/Summer-Internship/requirements.txt):
-
 ```bash
 pip install -r requirements.txt
 ```
 
 ### 3. Run the Application
-Run the main script to start real-time detection:
-
 ```bash
 python main.py
 ```
-*Press `q` inside the video feed window to stop and clean up resources.*
+*Press `q` to quit · `m` to cycle motion override · `r` to toggle reverse mode.*
 
 ---
 
 ## ⚙️ Configuration & Tuning
 
-You can calibrate the sensitivity and duration thresholds of the system directly inside [main.py](file:///a:/projects/Summer-Internship/main.py#L10-L24):
+All thresholds are defined at the top of [main.py](file:///a:/projects/Summer-Internship/main.py):
 
-| Parameter | Default Value | Description |
+### Detection Thresholds
+| Parameter | Value | Description |
 | :--- | :---: | :--- |
-| `EAR_THRESHOLD` | `0.25` | EAR value below which eyes are considered closed. |
-| `EAR_FRAMES` | `15` | Minimum consecutive frames of closed eyes to trigger the alarm. |
-| `MAR_THRESHOLD` | `0.6` | MAR value above which mouth is considered yawning. |
-| `MAR_FRAMES` | `15` | Minimum consecutive frames of yawning to trigger the alarm. |
-| `PITCH_THRESHOLD`| `0.55` | Head pitch ratio below which the head is considered drooping. |
-| `PITCH_FRAMES` | `15` | Minimum consecutive frames of head droop to trigger the alarm. |
-| `DISTRACTION_FRAMES` | `30` | Consecutive frames without face detection before triggering a distraction alert. |
-| `MOTION_CONFIG_PATH`| `"motion_device.json"`| File path for simulated speed/motion testing. |
-| `MOTION_SERIAL_PORT`| `None` | Port name (e.g. `'COM3'`) to read live GPS speed telemetry. |
+| `EAR_THRESHOLD` | `0.25` | EAR below which eyes are considered closed |
+| `MAR_THRESHOLD` | `0.6` | MAR above which mouth is considered yawning |
+| `PITCH_THRESHOLD` | `0.62` | Pitch ratio below which head is considered drooping |
+| `YAW_THRESHOLD` | `0.35` | Yaw asymmetry ratio above which driver is looking sideways |
+
+### Time-Based Duration Windows
+| Parameter | Value | Description |
+| :--- | :---: | :--- |
+| `closure_duration_seconds` | `2.0 s` | Continuous eye closure required to trigger an eye event |
+| `yawn_duration_seconds` | `1.0 s` | Continuous yawn required to count as a qualifying yawn |
+| `droop_duration_seconds` | `1.5 s` | Continuous head droop required to count as a nod event |
+| `YAW_GRACE_SECONDS` | `4.0 s` | Sideways glance allowed before counting as distraction |
+| `DISTRACTION_FRAMES` | `15 frames` | Face-lost frames before a distraction event is recorded |
+| `NOD_EAR_CORRELATION` | `0.30` | EAR must also be ≤ this for a nod to count (prevents false nod from chin-on-hand) |
+
+### Escalation Profiles (Sliding Window)
+| Category | Events Required | Window | Cooldown |
+| :--- | :---: | :---: | :---: |
+| `eye_closure` | 2 | 45 s | 45 s |
+| `yawn` | 3 | 30 s | 60 s |
+| `head_nod` | 2 | 45 s | 45 s |
+| `distraction` | 2 | 60 s | 60 s |
+
+### Other Settings
+| Parameter | Default | Description |
+| :--- | :---: | :--- |
+| `REVERSE_MODE_TIMEOUT` | `120 s` | Auto-disables reverse mode after this long |
+| `MOTION_CONFIG_PATH` | `"motion_device.json"` | JSON file for simulated motion testing |
+| `MOTION_SERIAL_PORT` | `None` | Serial port for live GPS/OBD-II sensor |
+
+---
+
+## 🎮 Keyboard Controls
+
+| Key | Action |
+| :---: | :--- |
+| `q` | Quit the application |
+| `m` | Cycle motion override: Auto → Force Moving → Force Stopped → Auto |
+| `r` | Toggle Reverse Mode on/off |
 
 ---
 
 ## 📖 Deep Dives & Documentation
 
-For a more thorough understanding, explore the following documentation artifacts:
-
-*   **Step-by-step Setup:** See [01_setup_and_testing_guide.md](file:///a:/projects/Summer-Internship/docs/01_setup_and_testing_guide.md) for how to run and troubleshoot.
-*   **System Layout:** Read [02_system_architecture.md](file:///a:/projects/Summer-Internship/docs/02_system_architecture.md) to understand modular data flows.
-*   **Motion Detector details:** Check [motion_detector.md](file:///a:/projects/Summer-Internship/docs/components/motion_detector.md) for speed sensor setup.
-*   **Mathematical Formulations:** Review [03_math_and_concepts.md](file:///a:/projects/Summer-Internship/docs/03_math_and_concepts.md) for formulas and MediaPipe landmark index mapping.
-*   **Implementation Guide:** Check [04_tech_stack_and_implementation.md](file:///a:/projects/Summer-Internship/docs/04_tech_stack_and_implementation.md) for libraries details and rationale.
+- **Setup & Testing:** [01_setup_and_testing_guide.md](file:///a:/projects/Summer-Internship/docs/01_setup_and_testing_guide.md)
+- **Architecture:** [02_system_architecture.md](file:///a:/projects/Summer-Internship/docs/02_system_architecture.md)
+- **Math & Formulas:** [03_math_and_concepts.md](file:///a:/projects/Summer-Internship/docs/03_math_and_concepts.md)
+- **Tech Stack:** [04_tech_stack_and_implementation.md](file:///a:/projects/Summer-Internship/docs/04_tech_stack_and_implementation.md)
 
 ---
 

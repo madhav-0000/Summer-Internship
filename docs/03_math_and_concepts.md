@@ -84,11 +84,14 @@ Where:
 If the driver turns their head extremely far (e.g. 90 degrees) or blocks the camera with their hand, the MediaPipe Face Mesh model drops the tracking entirely and returns no landmarks.
 
 ### C. Combined Distraction Logic
-To prevent false alarms from quick glances or normal mirror checks, the system uses a rolling frame buffer counter:
-- If **either** the face landmarks are lost OR the **Yaw Index exceeds the threshold**, we increment a `no_face_frames` counter.
-- If the driver looks back at the road, the counter immediately resets to zero.
-- If the counter exceeds the safety limit `DISTRACTION_FRAMES` (typically `30` frames or ~1.5 seconds), the distraction alert is triggered.
-- While the driver is looking away (yaw is high), EAR, MAR, and pitch alarms are suspended to prevent false close-eye alerts caused by skewed camera angles.
+To prevent false alarms from quick glances or normal mirror checks, the system uses a **real-time grace period** rather than a frame counter:
+
+- **Brief sideways look (≤ 4 seconds):** Treated as a mirror check — no distraction penalty, status shows `MIRROR CHECK`.
+- **Sustained sideways look (> 4 seconds):** The driver is considered distracted. The `face_lost_or_distracted` flag is set, incrementing the distraction counter.
+- **Face fully lost:** If MediaPipe returns no landmarks at all, the distraction frame counter immediately starts. After ~0.75 seconds (`DISTRACTION_FRAMES = 15` frames), a distraction event is recorded in the escalation system.
+- **2 distraction events within 60 seconds** arms the escalation. The next event (3rd) triggers the alarm.
+- While yaw exceeds the threshold (mirror check or sustained distraction), EAR, MAR, and pitch processing are suspended to avoid false drowsiness readings from skewed camera angles.
+- In **Reverse Mode**, face-loss distraction is completely suppressed, since the driver is expected to be looking backward.
 
 ### MediaPipe Landmark Indices
 - **Nose Tip:** `1`

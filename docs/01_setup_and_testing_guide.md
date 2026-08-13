@@ -54,29 +54,39 @@ Once the video window is open and running, you can perform the following actions
 
 ### Test A: Eye Closure Detection (Micro-sleep)
 This feature monitors your eyes to see if you fall asleep.
-- **Action:** Look straight at the camera and close your eyes. Keep them closed for at least 1 to 2 seconds.
-- **Expected Result:** The text on the screen should change to **"DROWSY (EYES CLOSED)"** and you should hear a continuous beep sound. Open your eyes to stop the alarm.
-- **Troubleshooting:** If the alarm triggers when you just blink normally, you can open the `main.py` file in a text editor and increase the `EAR_FRAMES` number to make it wait longer before alarming.
+- **Action:** Look straight at the camera and close your eyes. Keep them closed **continuously for at least 2 seconds**.
+- **Expected Result:** The status changes to **"DROWSY (EYES CLOSED)"** and the alarm sounds. You need to trigger this **twice within 45 seconds** for the alarm to arm (the HUD shows `EYE: 1/2` → `EYE: 2/2` → `ARMED`).
+- **Note:** A normal blink (< 2 seconds) is completely ignored.
 
 ### Test B: Yawn Detection
-This feature watches your mouth to detect wide yawns.
-- **Action:** Open your mouth wide, as if you are letting out a large, tired yawn, and hold it open for about a second.
-- **Expected Result:** The text on the screen should change to **"DROWSY (YAWNING)"** and the alarm will sound.
-- **Troubleshooting:** If talking normally triggers a yawn alarm, open `main.py` and increase the `MAR_THRESHOLD` number slightly so it is less sensitive.
+This feature watches your mouth to detect genuine drowsy yawns.
+- **Action:** Open your mouth wide (as in a large yawn) and hold it open for **at least 1 full second**. Repeat this **3 times within 30 seconds**.
+- **Expected Result:** Each qualifying yawn increments the HUD counter (`YAWN: 1/3`, `YAWN: 2/3`, `YAWN: 3/3 → ARMED`). On the **4th yawn**, the alarm fires.
+- **Note:** Short mouth movements like talking or coughing (under 1 second) are filtered out entirely.
 
 ### Test C: Head Drooping (Nodding Off)
-This feature tracks the angle of your head to see if you are nodding off.
-- **Action:** Start by looking straight forward. Slowly drop your chin down towards your chest, mimicking falling asleep at the wheel.
-- **Expected Result:** As your head tilts down, the text should change to **"DROWSY (NODDING OFF)"** and the alarm will sound.
-- **Troubleshooting:** If looking down at your keyboard triggers this alarm by mistake, open `main.py` and decrease the `PITCH_THRESHOLD` number so it requires a more extreme head drop.
+This feature tracks head pitch combined with eye state to detect genuine drowsy nods.
+- **Action:** Slowly drop your chin towards your chest **while also letting your eyes become heavy / partially closed** (EAR ≤ 0.30). Hold for 1.5 seconds.
+- **Expected Result:** The status changes to **"DROWSY (NODDING OFF)"**. Two such events within 45 seconds arm the alarm.
+- **Note:** Tilting your head while your eyes are wide open (e.g., resting chin on hand) will **not** count, because the EAR correlation check filters it out.
 
 ### Test D: Distraction / Face Lost Detection
-This feature detects if you look away from the road (e.g. at a phone or passenger) or if your camera is blocked (e.g., by a hand over your face).
-- **Action:** Look straight at the camera, then turn your head moderately (about 25 to 30 degrees) to the left or right, simulating looking away from the road. Hold this position for 1.5 seconds. Alternatively, cover your face completely with your hand.
-- **Expected Result:** The "Yaw" value shown on the screen will rise above `0.35` (or face landmarks will be lost). The status text will change to **"Status: DISTRACTED / CAMERA BLOCKED"** and the alarm will sound. Returning your gaze to the road will immediately clear the alert.
-- **Troubleshooting:** If the alarm triggers too easily when you scan your mirrors, you can open `main.py` and increase `YAW_THRESHOLD` slightly (e.g. to `0.40`) or increase the `DISTRACTION_FRAMES` count.
+This feature detects if you look away from the road for too long.
+- **Action:** Turn your head moderately (about 25–30 degrees) to the left or right and **hold it for more than 4 seconds**.
+- **Expected Result:**
+  - During the first **4 seconds**: status shows **"MIRROR CHECK"** — no penalty (this is the mirror-check grace period).
+  - After **4 seconds**: status changes to **"DISTRACTED (LOOKING AWAY)"** and the distraction counter increments.
+  - After **2 such events within 60 seconds**, the alarm arms and the next distraction triggers **"DISTRACTED / CAMERA BLOCKED"**.
+- **Alternative test:** Cover your camera completely — face loss also increments the distraction counter after ~0.75 s.
 
-### Test E: Vehicle Motion & Standby Detection
+### Test E: Reverse Mode
+This feature suppresses distraction alerts when the driver is reversing.
+- **Action:** With the app running, press the **`r`** key.
+- **Expected Result:** A large **amber banner** appears at the top of the frame reading `REVERSE MODE (120s)` with a countdown timer. While active, looking away from the camera does not trigger distraction alerts.
+- Press `r` again to deactivate (banner disappears, `FWD` badge returns).
+- The mode also auto-disables after 120 seconds.
+
+### Test F: Vehicle Motion & Standby Detection
 This feature optimizes safety checks by only running the camera face mesh processing when the vehicle is actively driving, and entering standby when stopped.
 
 **Method 1: Using the JSON File Simulation (Mock Mode)**
