@@ -39,24 +39,24 @@ This document outlines the specific technologies, programming languages, librari
 - **Implementation:**
   - **Landmarks Used:** Specific points around the left and right eyes (e.g., points 33, 133, 159, 145, etc.).
   - **Math:** The EAR formula calculates the ratio of the distances between the vertical eye landmarks and the horizontal eye landmarks. 
-  - **Logic:** When the eyes close, the EAR value drops significantly. If `EAR < EAR_THRESHOLD` for `EAR_FRAMES` consecutive frames, an alert is triggered.
+  - **Logic:** When the eyes close, the EAR value drops significantly. If `EAR < EAR_THRESHOLD` continuously for `closure_duration_seconds` (1.5s), an eye closure event is logged.
 
 ### 3. Yawn Detection (MAR - Mouth Aspect Ratio)
 - **Implementation:**
   - **Landmarks Used:** Specific points on the inner or outer lips (e.g., points 13, 14, 78, 308).
   - **Math:** Similar to EAR, the MAR formula calculates the ratio of the vertical distance between the top and bottom lips to the horizontal distance between the corners of the mouth.
-  - **Logic:** During a yawn, the MAR value spikes. If `MAR > MAR_THRESHOLD` for `MAR_FRAMES` consecutive frames, a yawn is recorded.
+  - **Logic:** During a yawn, the MAR value spikes. If `MAR > MAR_THRESHOLD` continuously for `yawn_duration_seconds` (1.0s), a yawn event is logged.
 
 ### 4. Head Drooping Detection (Pose Estimation)
 - **Implementation:**
   - **Landmarks Used:** The tip of the nose, the chin, and points on the sides of the face.
   - **Math:** By comparing the 2D or 3D positions of the nose relative to the chin and eyes, we can estimate the pitch (up/down tilt) of the head. Simple geometric distances or a Perspective-n-Point (PnP) algorithm can be used.
-  - **Logic:** If the calculated head pitch angle drops below a certain `PITCH_THRESHOLD` (indicating the head is falling forward), an alert is triggered.
+  - **Logic:** If the calculated head pitch angle drops below a certain `PITCH_THRESHOLD` (indicating the head is falling forward) continuously for `droop_duration_seconds` (1.5s), a head nod event is logged.
 
 ### 5. Alert System
 - **Implementation:**
-  - **Logic:** A central state machine monitors the EAR, MAR, and Pitch values. 
-  - **Action:** If any of these values cross their danger thresholds for their respective duration thresholds (to filter out blinks or quick glances), a separate thread or asynchronous call invokes the audio playback using `pygame.mixer.Sound.play()`.
+  - **Logic:** The `AlertEscalation` system monitors timestamped events from the trackers.
+  - **Action:** If any category accumulates enough events within a sliding time window (e.g., 2 eye closures in 45 seconds), the alarm is armed and a separate thread or asynchronous call invokes the audio playback using `pygame.mixer.Sound.play()`.
 
 ### 6. Vehicle Motion & Standby System
 - **Implementation:**

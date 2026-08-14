@@ -52,7 +52,7 @@ To avoid computationally heavy 3D matrix projections, we use a fast 2D approxima
 - `d_top = p2_y - p1_y` (Distance from top of head to nose).
 - `d_bottom = p3_y - p2_y` (Distance from nose to chin).
 - `Pitch Ratio = d_bottom / d_top`.
-- When looking straight ahead, the ratio is relatively stable. When the driver nods their head forward (droops), the chin tucks inward and the top of the head rolls forward. In a 2D camera projection, this makes `d_bottom` appear smaller and `d_top` appear larger, causing the Pitch Ratio to drop significantly. We use a threshold (around 0.5 to 0.6) to detect this state.
+- When looking straight ahead, the ratio is relatively stable. When the driver nods their head forward (droops), the chin tucks inward and the top of the head rolls forward. In a 2D camera projection, this makes `d_bottom` appear smaller and `d_top` appear larger, causing the Pitch Ratio to drop significantly. We use a threshold (around 0.6 to 0.7) to detect this state.
 
 ### MediaPipe Landmark Indices
 We use the following central vertical landmarks:

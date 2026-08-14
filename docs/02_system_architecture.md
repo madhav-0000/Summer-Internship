@@ -37,13 +37,13 @@ MotionDetector (core/motion.py)
                                   │     └── > threshold, ≥ 4s → Distraction counter ↑
                                   │
                                   ├── EyeTracker (core/eyes.py)
-                                  │     └── EAR < 0.25 for ≥ 2s → eye_closure event
+                                  │     └── EAR < 0.25 for ≥ 1.5s → eye_closure event
                                   │
                                   ├── MouthTracker (core/mouth.py)
                                   │     └── MAR > 0.6 for ≥ 1s → yawn event
                                   │
                                   └── HeadPoseEstimator (core/pose.py)
-                                        └── Pitch < 0.62 for ≥ 1.5s AND EAR ≤ 0.30
+                                        └── Pitch < 0.7 for ≥ 1.5s AND EAR ≤ 0.30
                                               → head_nod event
                                   │
                                   ▼
@@ -74,7 +74,7 @@ MotionDetector (core/motion.py)
 ## Key Design Decisions
 
 ### Time-Based vs. Frame-Based Detection
-All duration thresholds were migrated from frame counts to `time.time()` measurements. This means the 2-second eye closure window is always 2 real seconds whether the camera runs at 15 FPS or 30 FPS.
+All duration thresholds were migrated from frame counts to `time.time()` measurements. This means the 1.5-second eye closure window is always 1.5 real seconds whether the camera runs at 15 FPS or 30 FPS.
 
 ### Two-Tier Escalation (No Single-Event Alarms)
 A single drowsy event never triggers the alarm immediately. The `AlertEscalation` class maintains a `deque` of event timestamps per category. An event expires and is removed automatically once it falls outside the rolling window. This handles the "4th yawn removes the 1st" sliding-window behaviour naturally.
