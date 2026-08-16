@@ -23,7 +23,7 @@ class HeadPoseEstimator:
     NOSE_TIP = 1
     CHIN = 152
 
-    def __init__(self, pitch_threshold=0.6, pitch_frames=20, droop_duration_seconds=1.5):
+    def __init__(self, pitch_threshold=0.7, pitch_frames=20, droop_duration_seconds=1.5):
         self.pitch_threshold = pitch_threshold
         self.pitch_frames = pitch_frames           # Kept for backward-compatibility (not used for timing)
         self.droop_duration_seconds = droop_duration_seconds  # Sustained droop time to confirm nod

@@ -13,7 +13,7 @@ class EyeTracker:
     LEFT_EYE_INDICES = [33, 160, 158, 133, 153, 144]
     RIGHT_EYE_INDICES = [362, 385, 387, 263, 373, 380]
 
-    def __init__(self, ear_threshold=0.25, ear_frames=20, closure_duration_seconds=2.0):
+    def __init__(self, ear_threshold=0.25, ear_frames=20, closure_duration_seconds=1.5):
         self.ear_threshold = ear_threshold
         self.ear_frames = ear_frames  # Kept for backward compatibility (not used for timing)
         self.closure_duration_seconds = closure_duration_seconds  # Real-time closure window
