@@ -69,7 +69,7 @@ def main():
     mesh_detector = FaceMeshDetector()
     
     print("[INFO] Initializing Trackers...")
-    eye_tracker = EyeTracker(ear_threshold=EAR_THRESHOLD, ear_frames=EAR_FRAMES, closure_duration_seconds=2.0)
+    eye_tracker = EyeTracker(ear_threshold=EAR_THRESHOLD, ear_frames=EAR_FRAMES, closure_duration_seconds=1.0)
     mouth_tracker = MouthTracker(mar_threshold=MAR_THRESHOLD, mar_frames=MAR_FRAMES, yawn_duration_seconds=1.0)
     pose_tracker = HeadPoseEstimator(pitch_threshold=PITCH_THRESHOLD, pitch_frames=PITCH_FRAMES, droop_duration_seconds=1.5)
     alert_system = AudioAlert()

@@ -27,13 +27,14 @@ class AudioAlert:
             if self.use_pygame:
                 self.sound.play(loops=-1) # loop infinitely until stopped
             else:
-                # Fallback to Windows beep: Frequency 2500Hz, Duration 1000ms
-                # Beep is blocking, so we'll just do a single beep.
-                winsound.Beep(2500, 1000)
-                self.is_playing = False # Reset so it can be triggered again next frame
+                # Fallback to Windows PlaySound for continuous asynchronous loop
+                winsound.PlaySound("SystemHand", winsound.SND_ALIAS | winsound.SND_LOOP | winsound.SND_ASYNC)
 
     def stop(self):
         """Stops the alert sound."""
-        if self.is_playing and self.use_pygame:
-            self.sound.stop()
+        if self.is_playing:
+            if self.use_pygame:
+                self.sound.stop()
+            else:
+                winsound.PlaySound(None, 0)
         self.is_playing = False
