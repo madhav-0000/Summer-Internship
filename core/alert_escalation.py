@@ -14,10 +14,10 @@ class AlertEscalation:
 
     # Default escalation profiles per category
     DEFAULT_PROFILES = {
-        "yawn":        {"events_required": 3, "window_seconds": 60, "cooldown_seconds": 60},
-        "eye_closure": {"events_required": 2, "window_seconds": 45, "cooldown_seconds": 45},
-        "head_nod":    {"events_required": 2, "window_seconds": 45, "cooldown_seconds": 45},
-        "distraction": {"events_required": 3, "window_seconds": 60, "cooldown_seconds": 60},
+        "yawn":        {"events_required": 3, "window_seconds": 45, "cooldown_seconds": 45},
+        "eye_closure": {"events_required": 2, "window_seconds": 25, "cooldown_seconds": 25},
+        "head_nod":    {"events_required": 2, "window_seconds": 30, "cooldown_seconds": 30},
+        "distraction": {"events_required": 3, "window_seconds": 45, "cooldown_seconds": 45},
     }
 
     def __init__(self, profiles=None):
